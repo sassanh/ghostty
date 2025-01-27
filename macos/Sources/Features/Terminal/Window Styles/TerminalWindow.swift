@@ -33,7 +33,7 @@ class TerminalWindow: NSWindow {
 
     /// The configuration derived from the Ghostty config so we don't need to rely on references.
     private(set) var derivedConfig: DerivedConfig = .init()
-    
+
     /// Sets up our tab context menu
     private var tabMenuObserver: NSObjectProtocol? = nil
 
@@ -62,7 +62,26 @@ class TerminalWindow: NSWindow {
         }
     }
 
+    /// Whether the window has frame-react constraints applied.
+    var frameRectConstrained: Bool = false {
+        didSet {
+            // If we set this to true, then we need to ensure that the frame is
+            // within the constraints.
+            if frameRectConstrained {
+                setFrame(frame, display: true, animate: false)
+            }
+        }
+    }
+
     // MARK: NSWindow Overrides
+    override func constrainFrameRect(_ frameRect: NSRect,
+                                     to screen: NSScreen?) -> NSRect {
+        if (frameRectConstrained) {
+            return super.constrainFrameRect(frameRect, to: screen)
+        } else {
+            return frameRect
+        }
+    }
 
     override var toolbar: NSToolbar? {
         didSet {
@@ -544,7 +563,6 @@ class TerminalWindow: NSWindow {
             NotificationCenter.default.removeObserver(observer)
         }
     }
-    
     // MARK: Config
 
     struct DerivedConfig {
@@ -608,6 +626,16 @@ extension TerminalWindow {
     struct ResetZoomAccessoryView: View {
         @ObservedObject var viewModel: ViewModel
         let action: () -> Void
+
+        // The padding from the top that the view appears. This was all just manually
+        // measured based on the OS.
+        var topPadding: CGFloat {
+            if #available(macOS 26.0, *) {
+                return viewModel.hasToolbar ? 10 : 5
+            } else {
+                return viewModel.hasToolbar ? 9 : 4
+            }
+        }
 
         var body: some View {
             if viewModel.isSurfaceZoomed {
